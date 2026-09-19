@@ -1,5 +1,5 @@
 # SOTA-STORE WhatsApp Bot (Baileys Engine)
-
+run on terminal windows
 Dokumentasi dan arsip proyek bot WhatsApp Sota Store menggunakan engine Baileys yang stabil, anti-error, serta dilengkapi integrasi Gemini AI dan fitur pengiriman media otomatis.
 
 ---
