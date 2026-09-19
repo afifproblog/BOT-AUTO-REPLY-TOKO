@@ -1,5 +1,16 @@
 TUTORIAL
 "CARA PENGGUNAAN CODE ON LINUX/UBUNTU"
+- login ssh ubuntu@208.76.40.1xx
+- VPS
+- sudo apt update 
+- curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+- sudo apt install -y nodejs git
+- sudo npm install -g pm2
+- RESET :
+sudo killall apt apt-get
+sudo rm /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock
+sudo kill -9 161586(error held code)
+sudo rm /var/cache/apt/archives/lock /var/lib/dpkg/lock
 - Install Git
 - Cloning (git clone https://github.com/NAMA_CODE.git
 - Masuk ke folder bot : cd (Nama Git)
