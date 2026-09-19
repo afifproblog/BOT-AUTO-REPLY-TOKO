@@ -1,0 +1,17 @@
+TUTORIAL
+"CARA PENGGUNAAN CODE ON LINUX/UBUNTU"
+- Install Git
+- Cloning (git clone https://github.com/NAMA_CODE.git
+- Masuk ke folder bot : cd (Nama Git)
+- Install NPM
+- Run node index.js
+- Reset Database log: 
+(cat db_autoreply.json)
+(echo "{}" > db_autoreply.json)
+- Unlogin /change WhatsApp (Remove login session): 
+(rm -rf auth_baileys)
+- Run Cloud on Linux:
+pm2 start index.js --name "nama_bot"
+pm2 save
+pm2 startup
+
