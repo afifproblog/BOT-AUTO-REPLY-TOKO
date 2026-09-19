@@ -25,4 +25,29 @@ sudo rm /var/cache/apt/archives/lock /var/lib/dpkg/lock
 pm2 start index.js --name "nama_bot"
 pm2 save
 pm2 startup
+=================================================
+TUTORIAL DASAR NAVIGASI LINUX (VPS/UBUNTU)
+=================================================
 
+1. MELIHAT ISI FOLDER (Cek File & Direktori)
+• Perintah: ls
+• Fungsi  : Menampilkan daftar file dan folder di lokasi Anda saat ini.
+• Tips    : Gunakan perintah "ls -la" untuk melihat detail lengkap, ukuran file, dan file yang disembunyikan.
+
+2. MASUK KE DALAM FOLDER
+• Perintah: cd nama_folder
+• Fungsi  : Berpindah atau masuk ke dalam folder tertentu.
+• Contoh  : cd BOT-AUTO-REPLY-TOKO
+
+3. KELUAR DARI FOLDER (Undo / Mundur)
+• Perintah: cd ..
+• Fungsi  : Mundur satu langkah ke luar folder saat ini (kembali ke folder sebelumnya).
+• Perintah: cd
+• Fungsi  : Langsung kembali (teleport) ke halaman utama paling luar (Home), mengabaikan seberapa dalam posisi folder Anda saat ini.
+
+4. CEK POSISI LOKASI (Agar Tidak Tersesat)
+• Perintah: pwd
+• Fungsi  : Menampilkan alamat jalur (path) lengkap dari direktori tempat Anda berada saat ini.
+• Contoh  : Output akan terlihat seperti "/home/ubuntu/BOT-AUTO-REPLY-TOKO".
+
+=================================================
