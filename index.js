@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const fs = require('fs');
@@ -36,7 +37,10 @@ function shouldReply(senderId) {
 
 // Fungsi Notif ke Telegram menggunakan https murni
 function sendTelegramLog(pesanLog) {
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+        console.log('[TELEGRAM ERROR] Token atau Chat ID kosong!');
+        return;
+    }
     
     const data = JSON.stringify({
         chat_id: TELEGRAM_CHAT_ID,
@@ -58,7 +62,7 @@ function sendTelegramLog(pesanLog) {
         let responseBody = '';
         res.on('data', (chunk) => { responseBody += chunk; });
         res.on('end', () => {
-            console.log('[TELEGRAM RESPONSE RESPONSE OK]', responseBody);
+            console.log('[TELEGRAM RESPONSE]', responseBody);
         });
     });
 
@@ -118,7 +122,7 @@ async function startBot() {
                 const textPesan = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
                 // ==============================================================
-                // COMMAND #logwa: Ditaruh paling atas sebelum filter fromMe
+                // COMMAND #logwa: Ditaruh paling atas agar bebas hambatan
                 // ==============================================================
                 if (textPesan.trim().toLowerCase() === '#logwa') {
                     const now = Date.now();
