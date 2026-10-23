@@ -95,7 +95,28 @@ async function startBot() {
 
                 const senderId = msg.key.remoteJid;
                 if (!senderId || senderId.endsWith('@g.us') || senderId.includes('broadcast')) continue;
+                const textPesan = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+                // TAMBAHAN FITUR: Command #logwa (Tidak mengganggu fungsi utama)
+                // ==============================================================
+                if (textPesan.trim().toLowerCase() === '#logwa') {
+                    const now = Date.now();
+                    const batasWaktu = 24 * 60 * 60 * 1000; // 24 jam terakhir
+                    let listNomor = [];
 
+                    for (const [id, time] of Object.entries(db)) {
+                        if (now - time <= batasWaktu) {
+                            listNomor.push(`- ${id.split('@')[0]}`);
+                        }
+                    }
+
+                    let rekap = `*Rekap WA 24 Jam Terakhir:*\nTotal: ${listNomor.length} orang\n\n`;
+                    rekap += listNomor.length > 0 ? listNomor.join('\n') : 'Belum ada chat masuk dalam 24 jam terakhir.';
+
+                    await sock.sendMessage(senderId, { text: rekap });
+                    continue; // Lanjut ke pesan berikutnya
+                }
+                // ===============================================
+                
                 if (shouldReply(senderId)) {
                     processingUsers.add(senderId);
                     db[senderId] = Date.now();
