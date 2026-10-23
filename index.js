@@ -6,8 +6,8 @@ const readline = require('readline');
 
 // ================= KONFIGURASI BOT =================
 const COOLDOWN_DAYS = 3; 
-const TELEGRAM_BOT_TOKEN = 'ISI_TOKEN_BOTFATHER_KAMU'; 
-const TELEGRAM_CHAT_ID = 'ISI_CHAT_ID_TELEGRAM_KAMU';   
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN; 
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;   
 // ===================================================
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -26,7 +26,7 @@ function saveDB() {
 
 const processingUsers = new Set();
 
-// Logika jeda 3 hari
+// Logika jeda auto-reply
 function shouldReply(senderId) {
     if (processingUsers.has(senderId)) return false;
     const now = Date.now();
@@ -34,17 +34,21 @@ function shouldReply(senderId) {
     return (now - lastReplied) >= (COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
 }
 
-// Fungsi Notif ke Telegram
+// Fungsi Notif ke Telegram (Versi Aman Tanpa Markdown)
 async function sendTelegramLog(pesanLog) {
-    if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === 'ISI_TOKEN_BOTFATHER_KAMU') return;
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
     try {
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: pesanLog, parse_mode: 'Markdown' })
+            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: pesanLog })
         });
+        const result = await response.json();
+        if (!result.ok) {
+            console.error('[TELEGRAM ERROR]', result.description);
+        }
     } catch (err) {
-        console.error('[TELEGRAM ERROR] Gagal kirim notif:', err.message);
+        console.error('[TELEGRAM NETWORK ERROR]', err.message);
     }
 }
 
@@ -127,8 +131,8 @@ async function startBot() {
                             await sock.sendMessage(senderId, { text: captionQris + "\n\n_(Sistem: File QRIS belum ada di server)_" });
                         }
 
-                        // 3. Tembak Micro-Log ke Telegram
-                        await sendTelegramLog(`🟢 *[WA ATEKA]*\n👤 ${namaPelanggan}\n📞 \`${nomorPelanggan}\`\n⏱ Jeda ${COOLDOWN_DAYS} Hari AKTIF`);
+                        // 3. Tembak Micro-Log ke Telegram (Teks Polos Anti-Error)
+                        await sendTelegramLog(`[WA ATEKA]\nPelanggan: ${namaPelanggan}\nNomor: ${nomorPelanggan}\nStatus: Terkirim Auto-Reply (Jeda ${COOLDOWN_DAYS} Hari)`);
 
                         console.log(`[SUCCESS] Auto-reply mendarat ke ${nomorPelanggan}`);
                     } catch (error) {
