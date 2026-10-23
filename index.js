@@ -3,7 +3,6 @@ const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysocket
 const pino = require('pino');
 const fs = require('fs');
 const readline = require('readline');
-const https = require('https');
 
 // ================= KONFIGURASI BOT =================
 const COOLDOWN_DAYS = 3; 
@@ -35,43 +34,27 @@ function shouldReply(senderId) {
     return (now - lastReplied) >= (COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
 }
 
-// Fungsi Notif ke Telegram menggunakan https murni
-function sendTelegramLog(pesanLog) {
+// Fungsi Notif ke Telegram (Versi Aman Tanpa Markdown)
+async function sendTelegramLog(pesanLog) {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-        console.log('[TELEGRAM ERROR] Token atau Chat ID kosong!');
+        console.error('[TELEGRAM ERROR] TELEGRAM_BOT_TOKEN atau TELEGRAM_CHAT_ID belum terbaca dari .env!');
         return;
     }
-    
-    const data = JSON.stringify({
-        chat_id: TELEGRAM_CHAT_ID,
-        text: pesanLog
-    });
-
-    const options = {
-        hostname: 'api.telegram.org',
-        port: 443,
-        path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': data.length
-        }
-    };
-
-    const req = https.request(options, (res) => {
-        let responseBody = '';
-        res.on('data', (chunk) => { responseBody += chunk; });
-        res.on('end', () => {
-            console.log('[TELEGRAM RESPONSE]', responseBody);
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: pesanLog })
         });
-    });
-
-    req.on('error', (error) => {
-        console.error('[TELEGRAM ERROR HTTPS]', error.message);
-    });
-
-    req.write(data);
-    req.end();
+        const result = await response.json();
+        if (!result.ok) {
+            console.error('[TELEGRAM ERROR]', result.description);
+        } else {
+            console.log('[TELEGRAM SUCCESS] Pesan berhasil masuk ke Telegram.');
+        }
+    } catch (err) {
+        console.error('[TELEGRAM NETWORK ERROR]', err.message);
+    }
 }
 
 // Fungsi Cari Gambar QRIS
@@ -104,7 +87,7 @@ async function startBot() {
             startBot();
         } else if (update.connection === 'open') {
             console.log('\n>>> BOT FOTOCOPY ATEKA AKTIF! <<<');
-            console.log(`Sistem Auto-Reply (Jeda 3 Hari) + Monitoring Telegram Berjalan.`);
+            console.log(`Sistem Auto-Reply (Jeda ${COOLDOWN_DAYS} Hari) + Monitoring Telegram Berjalan.`);
         }
     });
 
@@ -122,7 +105,7 @@ async function startBot() {
                 const textPesan = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
                 // ==============================================================
-                // COMMAND #logwa: Ditaruh paling atas agar bebas hambatan
+                // FITUR COMMAND #logwa: Kirim daftar nomor 24 jam ke Telegram
                 // ==============================================================
                 if (textPesan.trim().toLowerCase() === '#logwa') {
                     const now = Date.now();
@@ -135,12 +118,12 @@ async function startBot() {
                         }
                     }
 
-                    let rekapTelegram = `📊 *REKAP WA 24 JAM TERAKHIR*\nTotal Pelanggan: ${listNomor.length} orang\n\n`;
+                    let rekapTelegram = `[REKAP WA 24 JAM TERAKHIR]\nTotal: ${listNomor.length} nomor\n\n`;
                     rekapTelegram += listNomor.length > 0 ? listNomor.join('\n') : 'Belum ada chat masuk dalam 24 jam terakhir.';
 
-                    sendTelegramLog(rekapTelegram);
-                    console.log(`[LOG] Perintah #logwa sukses dieksekusi dan dikirim ke Telegram.`);
-                    continue; 
+                    console.log('[LOG] Perintah #logwa diterima, mengirim rekap ke Telegram...');
+                    await sendTelegramLog(rekapTelegram);
+                    continue;
                 }
                 // ==============================================================
 
@@ -155,6 +138,9 @@ async function startBot() {
                     const namaPelanggan = msg.pushName || 'Pelanggan';
                     console.log(`\n[LOG] Membalas chat otomatis ke ${nomorPelanggan}...`);
 
+                    // ==============================================================
+                    // KURIR PINTAR: Langsung baca isi file .md secara real-time
+                    // ==============================================================
                     let replyText = "Pesan otomatis sedang dalam perbaikan.";
                     if (fs.existsSync('./pesan_toko.md')) {
                         replyText = fs.readFileSync('./pesan_toko.md', 'utf-8');
@@ -166,8 +152,10 @@ async function startBot() {
                     }
 
                     try {
+                        // 1. Kirim pesan jadwal toko
                         await sock.sendMessage(senderId, { text: replyText });
 
+                        // 2. Kirim pesan gambar QRIS + caption
                         const qrisPath = findImage('qris');
                         if (qrisPath) {
                             await sock.sendMessage(senderId, { image: fs.readFileSync(qrisPath), caption: captionQris });
@@ -175,13 +163,14 @@ async function startBot() {
                             await sock.sendMessage(senderId, { text: captionQris + "\n\n_(Sistem: File QRIS belum ada di server)_" });
                         }
 
-                        sendTelegramLog(`[WA ATEKA]\nPelanggan: ${namaPelanggan}\nNomor: ${nomorPelanggan}\nStatus: Terkirim Auto-Reply (Jeda ${COOLDOWN_DAYS} Hari)`);
+                        // 3. Tembak Micro-Log ke Telegram (Teks Polos Anti-Error)
+                        await sendTelegramLog(`[WA ATEKA]\nPelanggan: ${namaPelanggan}\nNomor: ${nomorPelanggan}\nStatus: Terkirim Auto-Reply (Jeda ${COOLDOWN_DAYS} Hari)`);
 
                         console.log(`[SUCCESS] Auto-reply mendarat ke ${nomorPelanggan}`);
                     } catch (error) {
                         console.error('[ERROR] Gagal membalas:', error);
                     } finally {
-                        processingUsers.delete(senderId);
+                        processingUsers.delete(senderId); // Buka kunci antrean
                     }
                 }
             }
