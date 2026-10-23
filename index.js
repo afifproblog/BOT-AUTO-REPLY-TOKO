@@ -81,7 +81,7 @@ async function startBot() {
             startBot();
         } else if (update.connection === 'open') {
             console.log('\n>>> BOT FOTOCOPY ATEKA AKTIF! <<<');
-            console.log(`Sistem Auto-Reply (Jeda ${COOLDOWN_DAYS} Hari) + Monitoring Telegram Berjalan.`);
+            console.log(`Sistem Auto-Reply (Jeda 3 Hari) + Monitoring Telegram Berjalan.`);
         }
     });
 
@@ -95,8 +95,11 @@ async function startBot() {
 
                 const senderId = msg.key.remoteJid;
                 if (!senderId || senderId.endsWith('@g.us') || senderId.includes('broadcast')) continue;
+
                 const textPesan = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
-                // TAMBAHAN FITUR: Command #logwa (Tidak mengganggu fungsi utama)
+
+                // ==============================================================
+                // COMMAND #logwa: Kirim rekap ke TELEGRAM, bukan ke WA
                 // ==============================================================
                 if (textPesan.trim().toLowerCase() === '#logwa') {
                     const now = Date.now();
@@ -109,14 +112,16 @@ async function startBot() {
                         }
                     }
 
-                    let rekap = `*Rekap WA 24 Jam Terakhir:*\nTotal: ${listNomor.length} orang\n\n`;
-                    rekap += listNomor.length > 0 ? listNomor.join('\n') : 'Belum ada chat masuk dalam 24 jam terakhir.';
+                    let rekapTelegram = `📊 *REKAP WA 24 JAM TERAKHIR*\nTotal Pelanggan: ${listNomor.length} orang\n\n`;
+                    rekapTelegram += listNomor.length > 0 ? listNomor.join('\n') : 'Belum ada chat masuk dalam 24 jam terakhir.';
 
-                    await sock.sendMessage(senderId, { text: rekap });
-                    continue; // Lanjut ke pesan berikutnya
+                    // Tembak langsung ke Telegram lu!
+                    await sendTelegramLog(rekapTelegram);
+                    console.log(`[LOG] Perintah #logwa dieksekusi, rekap dikirim ke Telegram.`);
+                    continue; 
                 }
-                // ===============================================
-                
+                // ==============================================================
+
                 if (shouldReply(senderId)) {
                     processingUsers.add(senderId);
                     db[senderId] = Date.now();
@@ -151,7 +156,7 @@ async function startBot() {
                             await sock.sendMessage(senderId, { text: captionQris + "\n\n_(Sistem: File QRIS belum ada di server)_" });
                         }
 
-                        // 3. Tembak Micro-Log ke Telegram (Teks Polos Anti-Error)
+                        // 3. Tembak Micro-Log ke Telegram
                         await sendTelegramLog(`[WA ATEKA]\nPelanggan: ${namaPelanggan}\nNomor: ${nomorPelanggan}\nStatus: Terkirim Auto-Reply (Jeda ${COOLDOWN_DAYS} Hari)`);
 
                         console.log(`[SUCCESS] Auto-reply mendarat ke ${nomorPelanggan}`);
