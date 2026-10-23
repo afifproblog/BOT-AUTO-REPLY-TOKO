@@ -2,6 +2,7 @@ const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysocket
 const pino = require('pino');
 const fs = require('fs');
 const readline = require('readline');
+const https = require('https');
 
 // ================= KONFIGURASI BOT =================
 const COOLDOWN_DAYS = 3; 
@@ -32,9 +33,8 @@ function shouldReply(senderId) {
     const lastReplied = db[senderId] || 0;
     return (now - lastReplied) >= (COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
 }
-const https = require('https');
 
-// Fungsi Notif ke Telegram menggunakan modul https murni (Anti-Gagal)
+// Fungsi Notif ke Telegram menggunakan https murni
 function sendTelegramLog(pesanLog) {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
     
@@ -58,7 +58,7 @@ function sendTelegramLog(pesanLog) {
         let responseBody = '';
         res.on('data', (chunk) => { responseBody += chunk; });
         res.on('end', () => {
-            console.log('[TELEGRAM RESPONSE]', responseBody);
+            console.log('[TELEGRAM RESPONSE RESPONSE OK]', responseBody);
         });
     });
 
@@ -110,7 +110,7 @@ async function startBot() {
         try {
             if (!m.messages || m.messages.length === 0) return;
             for (const msg of m.messages) {
-                if (!msg.message || msg.key.fromMe) continue;
+                if (!msg.message) continue;
 
                 const senderId = msg.key.remoteJid;
                 if (!senderId || senderId.endsWith('@g.us') || senderId.includes('broadcast')) continue;
@@ -118,7 +118,7 @@ async function startBot() {
                 const textPesan = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
                 // ==============================================================
-                // COMMAND #logwa: Kirim rekap ke TELEGRAM, bukan ke WA
+                // COMMAND #logwa: Ditaruh paling atas sebelum filter fromMe
                 // ==============================================================
                 if (textPesan.trim().toLowerCase() === '#logwa') {
                     const now = Date.now();
@@ -134,12 +134,13 @@ async function startBot() {
                     let rekapTelegram = `📊 *REKAP WA 24 JAM TERAKHIR*\nTotal Pelanggan: ${listNomor.length} orang\n\n`;
                     rekapTelegram += listNomor.length > 0 ? listNomor.join('\n') : 'Belum ada chat masuk dalam 24 jam terakhir.';
 
-                    // Tembak langsung ke Telegram lu!
-                    await sendTelegramLog(rekapTelegram);
-                    console.log(`[LOG] Perintah #logwa dieksekusi, rekap dikirim ke Telegram.`);
+                    sendTelegramLog(rekapTelegram);
+                    console.log(`[LOG] Perintah #logwa sukses dieksekusi dan dikirim ke Telegram.`);
                     continue; 
                 }
                 // ==============================================================
+
+                if (msg.key.fromMe) continue;
 
                 if (shouldReply(senderId)) {
                     processingUsers.add(senderId);
@@ -150,9 +151,6 @@ async function startBot() {
                     const namaPelanggan = msg.pushName || 'Pelanggan';
                     console.log(`\n[LOG] Membalas chat otomatis ke ${nomorPelanggan}...`);
 
-                    // ==============================================================
-                    // KURIR PINTAR: Langsung baca isi file .md secara real-time
-                    // ==============================================================
                     let replyText = "Pesan otomatis sedang dalam perbaikan.";
                     if (fs.existsSync('./pesan_toko.md')) {
                         replyText = fs.readFileSync('./pesan_toko.md', 'utf-8');
@@ -164,10 +162,8 @@ async function startBot() {
                     }
 
                     try {
-                        // 1. Kirim pesan jadwal toko
                         await sock.sendMessage(senderId, { text: replyText });
 
-                        // 2. Kirim pesan gambar QRIS + caption
                         const qrisPath = findImage('qris');
                         if (qrisPath) {
                             await sock.sendMessage(senderId, { image: fs.readFileSync(qrisPath), caption: captionQris });
@@ -175,14 +171,13 @@ async function startBot() {
                             await sock.sendMessage(senderId, { text: captionQris + "\n\n_(Sistem: File QRIS belum ada di server)_" });
                         }
 
-                        // 3. Tembak Micro-Log ke Telegram
-                        await sendTelegramLog(`[WA ATEKA]\nPelanggan: ${namaPelanggan}\nNomor: ${nomorPelanggan}\nStatus: Terkirim Auto-Reply (Jeda ${COOLDOWN_DAYS} Hari)`);
+                        sendTelegramLog(`[WA ATEKA]\nPelanggan: ${namaPelanggan}\nNomor: ${nomorPelanggan}\nStatus: Terkirim Auto-Reply (Jeda ${COOLDOWN_DAYS} Hari)`);
 
                         console.log(`[SUCCESS] Auto-reply mendarat ke ${nomorPelanggan}`);
                     } catch (error) {
                         console.error('[ERROR] Gagal membalas:', error);
                     } finally {
-                        processingUsers.delete(senderId); // Buka kunci antrean
+                        processingUsers.delete(senderId);
                     }
                 }
             }
