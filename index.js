@@ -32,23 +32,42 @@ function shouldReply(senderId) {
     const lastReplied = db[senderId] || 0;
     return (now - lastReplied) >= (COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
 }
+const https = require('https');
 
-// Fungsi Notif ke Telegram (Versi Aman Tanpa Markdown)
-async function sendTelegramLog(pesanLog) {
+// Fungsi Notif ke Telegram menggunakan modul https murni (Anti-Gagal)
+function sendTelegramLog(pesanLog) {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
-    try {
-        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: pesanLog })
-        });
-        const result = await response.json();
-        if (!result.ok) {
-            console.error('[TELEGRAM ERROR]', result.description);
+    
+    const data = JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: pesanLog
+    });
+
+    const options = {
+        hostname: 'api.telegram.org',
+        port: 443,
+        path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': data.length
         }
-    } catch (err) {
-        console.error('[TELEGRAM NETWORK ERROR]', err.message);
-    }
+    };
+
+    const req = https.request(options, (res) => {
+        let responseBody = '';
+        res.on('data', (chunk) => { responseBody += chunk; });
+        res.on('end', () => {
+            console.log('[TELEGRAM RESPONSE]', responseBody);
+        });
+    });
+
+    req.on('error', (error) => {
+        console.error('[TELEGRAM ERROR HTTPS]', error.message);
+    });
+
+    req.write(data);
+    req.end();
 }
 
 // Fungsi Cari Gambar QRIS
